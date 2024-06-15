@@ -62,14 +62,14 @@ export function PawnButton({ playerColor, index }: PawnProps) {
       x: index % 2 === 0 ? Pawn.STEP : Pawn.STEP * 4,
       y: index < 2 ? Pawn.STEP : Pawn.STEP * 4,
     };
-    const newPawn = new Pawn(
+    const newPawn = new Pawn({
       index,
-      { x, y },
       controls,
-      playerColor,
       initialPosition,
-      pawnRef.current,
-    );
+      color: playerColor,
+      position: { x, y },
+      el: pawnRef.current,
+    });
     setPlayer((p) => ({ ...p, pawns: [...p.pawns, newPawn] }));
 
     // NEVER FORGET THE CLEANUP OR ELSE STRICT MODE WILL FU

@@ -1,5 +1,5 @@
 import type { PlayerColor } from "@/types";
-import { MotionValue, type AnimationControls } from "framer-motion";
+import type { MotionValue, AnimationControls } from "framer-motion";
 import {
   bluePlayerAtom,
   greenPlayerAtom,
@@ -7,8 +7,8 @@ import {
   redPlayerAtom,
   yellowPlayerAtom,
 } from "./atoms";
-import { PrimitiveAtom } from "jotai";
-import { Player } from "./player";
+import { type PrimitiveAtom } from "jotai";
+import { type Player } from "./player";
 
 const colorAtom: Record<PlayerColor, PrimitiveAtom<Player>> = {
   red: redPlayerAtom,
@@ -22,31 +22,52 @@ export interface PawnPosition {
   x: MotionValue<number>;
   y: MotionValue<number>;
 }
+interface PawnArgs {
+  index: number;
+  position: PawnPosition;
+  controls: AnimationControls;
+  color: PlayerColor;
+  initialPosition: { x: number; y: number };
+  el: HTMLButtonElement;
+}
+const moveSound = new Audio("/sfx/pawn_move.wav");
+const landSound = new Audio("/sfx/pawn_land.wav");
+const killSound = new Audio("/sfx/stomp.wav");
 
 export class Pawn {
-  static readonly STEP = 48;
-  static readonly ORIGINAL_SIZE = 40;
+  public static readonly STEP = 48;
+  public static readonly ORIGINAL_SIZE = 40;
 
+  public index: number;
+  public position: PawnPosition;
+  public color: PlayerColor;
+  public stepsToHome: number | null = null;
   public isOut = false;
   public hasWon = false;
   public size = 45;
-  public stepsToHome: number | null = null;
   public progress = 0;
 
+  private controls: AnimationControls;
+  private initialPosition: { x: number; y: number };
+  private el: HTMLButtonElement;
   private player: Player;
   private direction: PawnDirection;
-  private moveSound = new Audio("/sfx/pawn_move.wav");
-  private landSound = new Audio("/sfx/pawn_land.wav");
-  private killSound = new Audio("/sfx/stomp.wav");
 
-  constructor(
-    public index: number,
-    public position: PawnPosition,
-    private controls: AnimationControls,
-    public color: PlayerColor,
-    private initialPosition: { x: number; y: number },
-    private el: HTMLButtonElement,
-  ) {
+  constructor({
+    index,
+    position,
+    initialPosition,
+    el,
+    controls,
+    color,
+  }: PawnArgs) {
+    this.index = index;
+    this.position = position;
+    this.controls = controls;
+    this.color = color;
+    this.initialPosition = initialPosition;
+    this.el = el;
+
     this.direction = this.setDirection();
     this.player = Pawn.getPlayer(this.color);
   }
@@ -66,19 +87,6 @@ export class Pawn {
     return pawns.find((pawn) => pawn.index === idx);
   }
 
-  private setDirection(): PawnDirection {
-    switch (this.color) {
-      case "red":
-        return "right";
-      case "green":
-        return "down";
-      case "blue":
-        return "up";
-      case "yellow":
-        return "left";
-    }
-  }
-
   public async moveWithValue(value: number) {
     if (this.hasWon) return;
 
@@ -94,9 +102,50 @@ export class Pawn {
     return didKill;
   }
 
+  public takeOut() {
+    const currentPostion = this.position;
+    console.log("currentPostion", currentPostion);
+    console.log("this.pawnColor", this.color);
+    console.log("this.index", this.index);
+    switch (this.color) {
+      case "red":
+        this.takeRedOut(currentPostion);
+        this.direction = "right";
+        break;
+      case "green":
+        this.takeGreenOut(currentPostion);
+        this.direction = "down";
+        break;
+      case "blue":
+        this.takeBlueOut(currentPostion);
+        this.direction = "up";
+        break;
+      case "yellow":
+        this.takeYellowOut(currentPostion);
+        this.direction = "left";
+        break;
+    }
+    landSound.play();
+    this.isOut = true;
+    this.size = 40;
+  }
+
+  private setDirection(): PawnDirection {
+    switch (this.color) {
+      case "red":
+        return "right";
+      case "green":
+        return "down";
+      case "blue":
+        return "up";
+      case "yellow":
+        return "left";
+    }
+  }
+
   private async move(isLastMove: boolean): Promise<boolean> {
     if (!this.isOut) return false;
-    const soundToPlay = isLastMove ? this.landSound : this.moveSound;
+    const soundToPlay = isLastMove ? landSound : moveSound;
 
     if (this.direction === "right") {
       await this.moveRight(soundToPlay);
@@ -397,34 +446,6 @@ export class Pawn {
     this.direction = "left";
   }
 
-  public takeOut() {
-    const currentPostion = this.position;
-    console.log("currentPostion", currentPostion);
-    console.log("this.pawnColor", this.color);
-    console.log("this.index", this.index);
-    switch (this.color) {
-      case "red":
-        this.takeRedOut(currentPostion);
-        this.direction = "right";
-        break;
-      case "green":
-        this.takeGreenOut(currentPostion);
-        this.direction = "down";
-        break;
-      case "blue":
-        this.takeBlueOut(currentPostion);
-        this.direction = "up";
-        break;
-      case "yellow":
-        this.takeYellowOut(currentPostion);
-        this.direction = "left";
-        break;
-    }
-    this.landSound.play();
-    this.isOut = true;
-    this.size = 40;
-  }
-
   private takeRedOut(currentPostion: PawnPosition) {
     const { x: currentX, y: currentY } = currentPostion;
 
@@ -585,7 +606,7 @@ export class Pawn {
     const isSafeBox = this.checkIsSafeBox(pawnToKill);
     if (isSafeBox) return;
 
-    this.killSound.play();
+    killSound.play();
     this.el.classList.replace("z-40", "z-50");
     await this.showStompAnimation();
     this.el.classList.replace("z-50", "z-40");
