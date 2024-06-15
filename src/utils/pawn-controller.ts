@@ -104,9 +104,6 @@ export class Pawn {
 
   public takeOut() {
     const currentPostion = this.position;
-    console.log("currentPostion", currentPostion);
-    console.log("this.pawnColor", this.color);
-    console.log("this.index", this.index);
     switch (this.color) {
       case "red":
         this.takeRedOut(currentPostion);
@@ -171,7 +168,6 @@ export class Pawn {
     const hasKilled = this.player.hasKilled;
     if (hasKilled) {
       const isDoorHandled = this.handleDoor();
-      console.log("isDoorHandled", isDoorHandled);
       if (isDoorHandled) return didKill;
       if (this.stepsToHome) this.stepsToHome--;
     }
@@ -180,7 +176,6 @@ export class Pawn {
     if (isNextBox) return didKill;
 
     this.handleTurn();
-    console.log("handle turn");
     return didKill;
   }
 
@@ -417,6 +412,7 @@ export class Pawn {
   }
 
   private turnUp(currentX: MotionValue<number>, canCollide: boolean) {
+    console.log("turning down");
     if (canCollide) {
       currentX.set(currentX.get() + Pawn.STEP);
     }
@@ -432,6 +428,7 @@ export class Pawn {
   }
 
   private turnDown(currentX: MotionValue<number>, canCollide: boolean) {
+    console.log("turning down");
     if (canCollide) {
       currentX.set(currentX.get() - Pawn.STEP);
     }
