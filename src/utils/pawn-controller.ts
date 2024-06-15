@@ -1,20 +1,20 @@
 import type { PlayerColor } from "@/types";
 import { MotionValue, type AnimationControls } from "framer-motion";
 import {
-  bluePawnsAtom,
-  greenPawnsAtom,
-  pawnsStore,
-  playerHasKilledAtom,
-  redPawnsAtom,
-  yellowPawnsAtom,
+  bluePlayerAtom,
+  greenPlayerAtom,
+  ludoStore,
+  redPlayerAtom,
+  yellowPlayerAtom,
 } from "./atoms";
 import { PrimitiveAtom } from "jotai";
+import { Player } from "./player";
 
-const colorAtom: Record<PlayerColor, PrimitiveAtom<Pawn[]>> = {
-  red: redPawnsAtom,
-  green: greenPawnsAtom,
-  yellow: yellowPawnsAtom,
-  blue: bluePawnsAtom,
+const colorAtom: Record<PlayerColor, PrimitiveAtom<Player>> = {
+  red: redPlayerAtom,
+  green: greenPlayerAtom,
+  yellow: yellowPlayerAtom,
+  blue: bluePlayerAtom,
 };
 
 export type PawnDirection = "up" | "down" | "left" | "right";
@@ -27,44 +27,47 @@ export class Pawn {
   static readonly STEP = 48;
   static readonly ORIGINAL_SIZE = 40;
 
-  public isPawnOut = false;
+  public isOut = false;
   public hasWon = false;
   public size = 45;
   public stepsToHome: number | null = null;
-  public diceSixCount = 0;
   public progress = 0;
 
-  private direction!: PawnDirection;
-  private speed = 0.1;
-  private pawnMoveSound = new Audio("/sfx/pawn_move.wav");
-  private pawnLandSound = new Audio("/sfx/pawn_land.wav");
-  private pawnKillSound = new Audio("/sfx/stomp.wav");
+  private player: Player;
+  private direction: PawnDirection;
+  private moveSound = new Audio("/sfx/pawn_move.wav");
+  private landSound = new Audio("/sfx/pawn_land.wav");
+  private killSound = new Audio("/sfx/stomp.wav");
 
   constructor(
     public index: number,
     public position: PawnPosition,
     private controls: AnimationControls,
-    public pawnColor: PlayerColor,
+    public color: PlayerColor,
     private initialPosition: { x: number; y: number },
-    private pawnEl: HTMLButtonElement,
+    private el: HTMLButtonElement,
   ) {
     this.direction = this.setDirection();
+    this.player = Pawn.getPlayer(this.color);
+  }
+
+  public static getPlayer(color: PlayerColor): Player {
+    return ludoStore.get(colorAtom[color]);
+  }
+  public static setPlayer(color: PlayerColor, player: Player) {
+    ludoStore.set(colorAtom[color], player);
   }
 
   public static getByIdxAndColor(
     idx: number,
     color: PlayerColor,
   ): Pawn | undefined {
-    const pawns = Pawn.getAllByColor(color);
+    const pawns = Pawn.getPlayer(color).pawns;
     return pawns.find((pawn) => pawn.index === idx);
   }
 
-  public static getAllByColor(color: PlayerColor): Pawn[] {
-    return pawnsStore.get(colorAtom[color]);
-  }
-
   private setDirection(): PawnDirection {
-    switch (this.pawnColor) {
+    switch (this.color) {
       case "red":
         return "right";
       case "green":
@@ -92,8 +95,8 @@ export class Pawn {
   }
 
   private async move(isLastMove: boolean): Promise<boolean> {
-    if (!this.isPawnOut) return false;
-    const soundToPlay = isLastMove ? this.pawnLandSound : this.pawnMoveSound;
+    if (!this.isOut) return false;
+    const soundToPlay = isLastMove ? this.landSound : this.moveSound;
 
     if (this.direction === "right") {
       await this.moveRight(soundToPlay);
@@ -116,7 +119,7 @@ export class Pawn {
       }
     }
 
-    const hasKilled = pawnsStore.get(playerHasKilledAtom[this.pawnColor]);
+    const hasKilled = this.player.hasKilled;
     if (hasKilled) {
       const isDoorHandled = this.handleDoor();
       console.log("isDoorHandled", isDoorHandled);
@@ -143,19 +146,19 @@ export class Pawn {
   }
 
   private checkPawnCollision(): string | null {
-    const pawnRect = getExactClientRect(this.pawnEl);
+    const pawnRect = getExactClientRect(this.el);
     const pawnElements = Array.from(
       document.querySelectorAll<HTMLButtonElement>(".pawn"),
     );
 
     for (const pawnEl of pawnElements) {
-      if (pawnEl === this.pawnEl) continue;
+      if (pawnEl === this.el) continue;
 
       const [, color, idx] = pawnEl.id.split("-");
       const pawn = Pawn.getByIdxAndColor(Number(idx), color as PlayerColor);
       if (!pawn) continue;
-      if (!pawn.isPawnOut) continue;
-      if (pawn.pawnColor === this.pawnColor) continue;
+      if (!pawn.isOut) continue;
+      if (pawn.color === this.color) continue;
 
       const otherPawnRect = getExactClientRect(pawnEl);
 
@@ -225,17 +228,17 @@ export class Pawn {
       yellow: "left",
     };
     for (const [color, direction] of Object.entries(colorToDoor)) {
-      if (color !== this.pawnColor) continue;
+      if (color !== this.color) continue;
 
       const isNextDoor = this.checkIsNextBox(direction, true);
       if (isNextDoor) {
-        if (this.pawnColor === "red" && direction === "right")
+        if (this.color === "red" && direction === "right")
           this.turnRight(this.position.y, false);
-        else if (this.pawnColor === "green" && direction === "down")
+        else if (this.color === "green" && direction === "down")
           this.turnDown(this.position.x, false);
-        else if (this.pawnColor === "blue" && direction === "up")
+        else if (this.color === "blue" && direction === "up")
           this.turnUp(this.position.x, false);
-        else if (this.pawnColor === "yellow" && direction === "left")
+        else if (this.color === "yellow" && direction === "left")
           this.turnLeft(this.position.y, false);
         this.stepsToHome = 6;
       }
@@ -246,7 +249,7 @@ export class Pawn {
 
   private checkIsNextBox(direction = this.direction, isDoor = false): boolean {
     const buffer = 20;
-    const pawnRect = getExactClientRect(this.pawnEl);
+    const pawnRect = getExactClientRect(this.el);
     let nextX = pawnRect.left;
     let nextY = pawnRect.top;
 
@@ -268,7 +271,7 @@ export class Pawn {
     const isNextBox = elementsAtNextPosition.some((el) => {
       if (
         el.classList.contains("box") &&
-        (isDoor ? el.id === `door-${this.pawnColor}` : true)
+        (isDoor ? el.id === `door-${this.color}` : true)
       ) {
         if (!this.stepsToHome && el.classList.contains("home")) {
           return false;
@@ -285,7 +288,7 @@ export class Pawn {
     direction = this.direction,
   ): boolean {
     const buffer = 20;
-    const pawnRect = getExactClientRect(this.pawnEl);
+    const pawnRect = getExactClientRect(this.el);
     const wallRect = getExactClientRect(document.querySelector(selector)!);
 
     let isClose = false;
@@ -323,7 +326,7 @@ export class Pawn {
       name: "move",
       translateX: currentX.get() + Pawn.STEP,
       translateY: currentY.get(),
-      transition: { duration: this.speed },
+      transition: { duration: this.player.speed },
     });
     currentX.set(currentX.get() + Pawn.STEP);
   }
@@ -335,7 +338,7 @@ export class Pawn {
       name: "move",
       translateY: currentY.get() - Pawn.STEP,
       translateX: currentX.get(),
-      transition: { duration: this.speed },
+      transition: { duration: this.player.speed },
     });
     currentY.set(currentY.get() - Pawn.STEP);
   }
@@ -347,7 +350,7 @@ export class Pawn {
       name: "move",
       translateY: currentY.get() + Pawn.STEP,
       translateX: currentX.get(),
-      transition: { duration: this.speed },
+      transition: { duration: this.player.speed },
     });
     currentY.set(currentY.get() + Pawn.STEP);
   }
@@ -359,7 +362,7 @@ export class Pawn {
       name: "move",
       translateX: currentX.get() - Pawn.STEP,
       translateY: currentY.get(),
-      transition: { duration: this.speed },
+      transition: { duration: this.player.speed },
     });
     currentX.set(currentX.get() - Pawn.STEP);
   }
@@ -397,9 +400,9 @@ export class Pawn {
   public takeOut() {
     const currentPostion = this.position;
     console.log("currentPostion", currentPostion);
-    console.log("this.pawnColor", this.pawnColor);
+    console.log("this.pawnColor", this.color);
     console.log("this.index", this.index);
-    switch (this.pawnColor) {
+    switch (this.color) {
       case "red":
         this.takeRedOut(currentPostion);
         this.direction = "right";
@@ -417,8 +420,8 @@ export class Pawn {
         this.direction = "left";
         break;
     }
-    this.pawnLandSound.play();
-    this.isPawnOut = true;
+    this.landSound.play();
+    this.isOut = true;
     this.size = 40;
   }
 
@@ -566,7 +569,7 @@ export class Pawn {
 
   private checkIsSafeBox(pawnToCheck: Pawn): boolean {
     // TODO: When 2 or more pawns are in the same safe box, they should be smaller in size and beside each other
-    const pawnRect = getExactClientRect(pawnToCheck.pawnEl);
+    const pawnRect = getExactClientRect(pawnToCheck.el);
     const elementsAtNextPosition = document.elementsFromPoint(
       pawnRect.left,
       pawnRect.top,
@@ -582,18 +585,18 @@ export class Pawn {
     const isSafeBox = this.checkIsSafeBox(pawnToKill);
     if (isSafeBox) return;
 
-    this.pawnKillSound.play();
-    this.pawnEl.classList.replace("z-40", "z-50");
+    this.killSound.play();
+    this.el.classList.replace("z-40", "z-50");
     await this.showStompAnimation();
-    this.pawnEl.classList.replace("z-50", "z-40");
+    this.el.classList.replace("z-50", "z-40");
 
     await pawnToKill.reset();
-    const pawns = pawnsStore
-      .get(colorAtom[pawnToKill.pawnColor])
-      .map((pawn) => (pawn.index === pawnToKill.index ? pawnToKill : pawn));
+    const playerToKill = Pawn.getPlayer(pawnToKill.color);
+    const pawns = playerToKill.pawns.map((pawn) =>
+      pawn.index === pawnToKill.index ? pawnToKill : pawn,
+    );
 
-    pawnsStore.set(colorAtom[pawnToKill.pawnColor], pawns);
-    pawnsStore.set(playerHasKilledAtom[this.pawnColor], true);
+    Pawn.setPlayer(this.color, { ...playerToKill, pawns, hasKilled: true });
   }
 
   private async showStompAnimation() {
@@ -608,15 +611,17 @@ export class Pawn {
   }
 
   private async reset() {
-    const pawns = Pawn.getAllByColor(this.pawnColor).filter((p) => p.isPawnOut);
-    if (pawns.length === 1) {
-      pawnsStore.set(playerHasKilledAtom[this.pawnColor], false);
+    if (this.player.pawns.filter((p) => p.isOut).length === 1) {
+      Pawn.setPlayer(this.color, {
+        ...this.player,
+        hasKilled: false,
+        diceSixCount: 0,
+      });
     }
 
-    this.isPawnOut = false;
+    this.isOut = false;
     this.direction = this.setDirection();
     this.size = 45;
-    this.diceSixCount = 0;
     this.progress = 0;
     this.stepsToHome = null;
     this.position.x.set(this.initialPosition.x);

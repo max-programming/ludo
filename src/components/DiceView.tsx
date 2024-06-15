@@ -1,30 +1,31 @@
 import { cn } from "@/lib/utils";
 import { PlayerColor } from "@/types";
 import {
-  bluePawnsAtom,
+  bluePlayerAtom,
+  colorToAtomMap,
   colors,
   diceValueAtom,
   disabledDiceAtom,
-  greenPawnsAtom,
+  greenPlayerAtom,
   moveLogsAtom,
   playerTurnAtom,
-  redPawnsAtom,
-  yellowPawnsAtom,
+  redPlayerAtom,
+  yellowPlayerAtom,
 } from "@/utils/atoms";
-import { Pawn } from "@/utils/pawn-controller";
 import { PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import Dice from "react-dice-roll";
 import { Switch } from "./ui/switch";
 import { Input } from "./ui/input";
+import { Player } from "@/utils/player";
 
 const faces = [1, 2, 3, 4, 5, 6].map((face) => `/dice-faces/dice-${face}.png`);
 
-const colorAtom: Record<PlayerColor, PrimitiveAtom<Pawn[]>> = {
-  red: redPawnsAtom,
-  green: greenPawnsAtom,
-  yellow: yellowPawnsAtom,
-  blue: bluePawnsAtom,
+const colorAtom: Record<PlayerColor, PrimitiveAtom<Player>> = {
+  red: redPlayerAtom,
+  green: greenPlayerAtom,
+  yellow: yellowPlayerAtom,
+  blue: bluePlayerAtom,
 };
 const bgColors = {
   red: "bg-red-500",
@@ -51,25 +52,39 @@ export function DiceView() {
     import.meta.env.MODE === "development",
   );
   const [cheatNumber, setCheatNumber] = useState<CheatNumber>();
-
   const [disabledDice, setDisabledDice] = useAtom(disabledDiceAtom);
   const setDiceValue = useSetAtom(diceValueAtom);
   const [playerTurn, setPlayerTurn] = useAtom(playerTurnAtom);
+  const player = useAtomValue(colorToAtomMap[playerTurn]);
   const [, setMoveLogs] = useAtom(moveLogsAtom);
-  const pawns = useAtomValue(colorAtom[playerTurn]);
+  const { pawns } = useAtomValue(colorAtom[playerTurn]);
 
   function handleRoll(value: number) {
     setDiceValue(value);
     setDisabledDice(true);
 
+    handleThreeSixes(value);
     moveOnlyAvailablePawn(value);
 
     changePlayerTurnOnEmptyTurn(value);
   }
 
+  function handleThreeSixes(value: number) {
+    // if (player. !== playerTurn) return;
+    if (value === 6) player.diceSixCount++;
+    else if (value !== 0) player.diceSixCount = 0;
+
+    if (value === 6 && player.diceSixCount === 3) {
+      setDiceValue(0);
+      setDisabledDice(false);
+      setNextPlayer();
+      player.diceSixCount = 0;
+    }
+  }
+
   function changePlayerTurnOnEmptyTurn(value: number) {
     // if all pawns are in the initial home and the dice value is not 6, change the player turn
-    if (pawns.every((c) => !c.isPawnOut) && value !== 6) {
+    if (pawns.every((c) => !c.isOut) && value !== 6) {
       setDisabledDice(false);
       setDiceValue(0);
       setNextPlayer();
@@ -78,7 +93,7 @@ export function DiceView() {
 
   async function moveOnlyAvailablePawn(value: number) {
     // if only one pawn is out, move it
-    const outPawns = pawns.filter((c) => c.isPawnOut);
+    const outPawns = pawns.filter((c) => c.isOut);
     if (outPawns.length !== 1) return;
     const [outPawn] = outPawns;
     if (value === 6) {
@@ -95,10 +110,10 @@ export function DiceView() {
     const didKill = await outPawn.moveWithValue(value);
     setMoveLogs((logs) => [
       ...logs,
-      `${outPawn.pawnColor} moved a pawn by ${value}`,
+      `${outPawn.color} moved a pawn by ${value}`,
     ]);
     if (didKill) {
-      setMoveLogs((logs) => [...logs, `${outPawn.pawnColor} killed a pawn`]);
+      setMoveLogs((logs) => [...logs, `${outPawn.color} killed a pawn`]);
     }
 
     setDisabledDice(false);

@@ -4,16 +4,13 @@ import {
   diceValueAtom,
   playerTurnAtom,
   colors as playerColors,
-  redPawnsAtom,
-  bluePawnsAtom,
-  yellowPawnsAtom,
-  greenPawnsAtom,
   disabledDiceAtom,
   moveLogsAtom,
+  colorToAtomMap,
 } from "@/utils/atoms";
 import { Pawn } from "@/utils/pawn-controller";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
-import { PrimitiveAtom, useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 
 interface PawnProps {
@@ -44,16 +41,9 @@ const colors = {
   },
 };
 
-const colorAtom: Record<PlayerColor, PrimitiveAtom<Pawn[]>> = {
-  red: redPawnsAtom,
-  green: greenPawnsAtom,
-  yellow: yellowPawnsAtom,
-  blue: bluePawnsAtom,
-};
-
 export function PawnButton({ playerColor, index }: PawnProps) {
   const [playerTurn, setPlayerTurn] = useAtom(playerTurnAtom);
-  const [pawns, setPawns] = useAtom(colorAtom[playerColor]);
+  const [player, setPlayer] = useAtom(colorToAtomMap[playerColor]);
   const [diceNumber, setDiceNumber] = useAtom(diceValueAtom);
   const [, setMoveLogs] = useAtom(moveLogsAtom);
   const pawnRef = useRef<HTMLButtonElement>(null);
@@ -63,7 +53,7 @@ export function PawnButton({ playerColor, index }: PawnProps) {
   const x = useMotionValue(index % 2 === 0 ? Pawn.STEP : Pawn.STEP * 4);
   const y = useMotionValue(index < 2 ? Pawn.STEP : Pawn.STEP * 4);
 
-  const pawn = pawns.find((c) => c.index === index);
+  const pawn = player.pawns.find((c) => c.index === index);
 
   useEffect(() => {
     if (pawn || !pawnRef.current) return;
@@ -80,26 +70,17 @@ export function PawnButton({ playerColor, index }: PawnProps) {
       initialPosition,
       pawnRef.current,
     );
-    setPawns([...pawns, newPawn]);
-  }, [controls, index, pawn, pawns, playerColor, setPawns, x, y]);
+    setPlayer((p) => ({ ...p, pawns: [...p.pawns, newPawn] }));
 
-  useEffect(() => {
-    // three sixes rule
-    // diceSixCount is for player (should not be part of Pawn)
-    if (!pawn) return;
-    if (playerColor !== playerTurn) return;
-
-    if (diceNumber === 6) pawn.diceSixCount++;
-    else if (diceNumber !== 0) pawn.diceSixCount = 0;
-
-    if (diceNumber === 6 && pawn.diceSixCount === 3) {
-      setDiceNumber(0);
-      setDisabledDice(false);
-      setNextPlayer();
-      pawn.diceSixCount = 0;
-    }
+    // NEVER FORGET THE CLEANUP OR ELSE STRICT MODE WILL FU
+    return () => {
+      setPlayer((p) => ({
+        ...p,
+        pawns: p.pawns.filter((c) => c.index !== index),
+      }));
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diceNumber]);
+  }, []);
 
   function setNextPlayer() {
     const nextPlayer = playerColors[(playerColors.indexOf(playerTurn) + 1) % 4];
@@ -111,12 +92,12 @@ export function PawnButton({ playerColor, index }: PawnProps) {
       return;
     }
 
-    if (diceNumber !== 6 && !pawn.isPawnOut) {
+    if (diceNumber !== 6 && !pawn.isOut) {
       setDisabledDice(false);
       return;
     }
 
-    if (diceNumber === 6 && !pawn.isPawnOut) {
+    if (diceNumber === 6 && !pawn.isOut) {
       pawn.takeOut();
       setMoveLogs((logs) => [...logs, `${playerColor} took out a pawn`]);
       setDiceNumber(0);
@@ -196,7 +177,7 @@ export function PawnButton({ playerColor, index }: PawnProps) {
         viewBox="0 0 64 64"
         width={pawn?.size ?? 45}
         height={pawn?.size ?? 45}
-        className={cn(pawn?.isPawnOut && "translate-x-1 translate-y-1")}
+        className={cn(pawn?.isOut && "translate-x-1 translate-y-1")}
         xmlSpace="preserve"
       >
         <path
