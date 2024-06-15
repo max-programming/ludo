@@ -80,13 +80,15 @@ export function Board() {
           </div>
         </CardContent>
       </Card>
-      <div className="absolute h-[80%] overflow-scroll right-3 top-3">
-        {moveLogs.map((log, index) => (
-          <div key={index} className="mb-2">
-            {log}
-          </div>
-        ))}
-      </div>
+      {import.meta.env.DEV && (
+        <div className="absolute h-[80%] overflow-scroll right-3 top-3">
+          {moveLogs.map((log, index) => (
+            <div key={index} className="mb-2">
+              {log}
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
