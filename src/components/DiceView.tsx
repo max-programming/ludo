@@ -55,7 +55,7 @@ export function DiceView() {
   const [disabledDice, setDisabledDice] = useAtom(disabledDiceAtom);
   const setDiceValue = useSetAtom(diceValueAtom);
   const [playerTurn, setPlayerTurn] = useAtom(playerTurnAtom);
-  const [moveLogs, setMoveLogs] = useAtom(moveLogsAtom);
+  const [, setMoveLogs] = useAtom(moveLogsAtom);
   const pawns = useAtomValue(colorAtom[playerTurn]);
 
   function handleRoll(value: number) {
