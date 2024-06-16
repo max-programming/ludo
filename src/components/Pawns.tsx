@@ -83,8 +83,11 @@ export function PawnButton({ playerColor, index }: PawnProps) {
   }, []);
 
   function setNextPlayer() {
-    const nextPlayer = playerColors[(playerColors.indexOf(playerTurn) + 1) % 4];
-    setPlayerTurn(nextPlayer);
+    setTimeout(() => {
+      const nextPlayer =
+        playerColors[(playerColors.indexOf(playerTurn) + 1) % 4];
+      setPlayerTurn(nextPlayer);
+    }, 200);
   }
 
   async function handleTap() {

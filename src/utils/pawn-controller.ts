@@ -103,23 +103,19 @@ export class Pawn {
   }
 
   public takeOut() {
-    const currentPostion = this.position;
+    console.log(`taking out ${this.color}`);
     switch (this.color) {
       case "red":
-        this.takeRedOut(currentPostion);
-        this.direction = "right";
+        this.takeRedOut();
         break;
       case "green":
-        this.takeGreenOut(currentPostion);
-        this.direction = "down";
+        this.takeGreenOut();
         break;
       case "blue":
-        this.takeBlueOut(currentPostion);
-        this.direction = "up";
+        this.takeBlueOut();
         break;
       case "yellow":
-        this.takeYellowOut(currentPostion);
-        this.direction = "left";
+        this.takeYellowOut();
         break;
     }
     landSound.play();
@@ -143,20 +139,23 @@ export class Pawn {
   private async move(isLastMove: boolean): Promise<boolean> {
     if (!this.isOut) return false;
     const soundToPlay = isLastMove ? landSound : moveSound;
-    console.log(`Moving in ${this.direction}`);
+    console.log(`Moving ${this.el.id} in ${this.direction}`);
 
-    if (this.direction === "right") {
-      await this.moveRight(soundToPlay);
+    switch (this.direction) {
+      case "right":
+        await this.moveRight(soundToPlay);
+        break;
+      case "up":
+        await this.moveUp(soundToPlay);
+        break;
+      case "down":
+        await this.moveDown(soundToPlay);
+        break;
+      case "left":
+        await this.moveLeft(soundToPlay);
+        break;
     }
-    else if (this.direction === "up") {
-      await this.moveUp(soundToPlay);
-    }
-    else if (this.direction === "down") {
-      await this.moveDown(soundToPlay);
-    }
-    else if (this.direction === "left") {
-      await this.moveLeft(soundToPlay);
-    }
+
     // refactor code after this comment to make it more readable and DRY
     let didKill = false;
     if (isLastMove) {
@@ -226,9 +225,12 @@ export class Pawn {
     const isNextFinalHome = this.checkProximity("#final_home");
     if (this.direction === "right") {
       if (!isNextFinalHome) {
-        if (this.checkIsNextBox("down"))
+        if (this.checkIsNextBox("down")) {
           this.turnDown(currentX, isNextFinalHome);
-        else this.turnUp(currentX, isNextFinalHome);
+        }
+        else {
+          this.turnUp(currentX, isNextFinalHome);
+        }
       }
       else {
         this.turnUp(currentX, isNextFinalHome);
@@ -236,9 +238,12 @@ export class Pawn {
     }
     else if (this.direction === "up") {
       if (!isNextFinalHome) {
-        if (this.checkIsNextBox("right"))
+        if (this.checkIsNextBox("right")) {
           this.turnRight(currentY, isNextFinalHome);
-        else this.turnLeft(currentY, isNextFinalHome);
+        }
+        else {
+          this.turnLeft(currentY, isNextFinalHome);
+        }
       }
       else {
         this.turnLeft(currentY, isNextFinalHome);
@@ -246,9 +251,12 @@ export class Pawn {
     }
     else if (this.direction === "down") {
       if (!isNextFinalHome) {
-        if (this.checkIsNextBox("left"))
+        if (this.checkIsNextBox("left")) {
           this.turnLeft(currentY, isNextFinalHome);
-        else this.turnRight(currentY, isNextFinalHome);
+        }
+        else {
+          this.turnRight(currentY, isNextFinalHome);
+        }
       }
       else {
         this.turnRight(currentY, isNextFinalHome);
@@ -256,8 +264,12 @@ export class Pawn {
     }
     else if (this.direction === "left") {
       if (!isNextFinalHome) {
-        if (this.checkIsNextBox("up")) this.turnUp(currentX, isNextFinalHome);
-        else this.turnDown(currentX, isNextFinalHome);
+        if (this.checkIsNextBox("up")) {
+          this.turnUp(currentX, isNextFinalHome);
+        }
+        else {
+          this.turnDown(currentX, isNextFinalHome);
+        }
       }
       else {
         this.turnDown(currentX, isNextFinalHome);
@@ -413,7 +425,7 @@ export class Pawn {
   }
 
   private turnUp(currentX: MotionValue<number>, canCollide: boolean) {
-    console.log("turning down");
+    console.log(`turning up ${this.el.id}`);
     if (canCollide) {
       currentX.set(currentX.get() + Pawn.STEP);
     }
@@ -421,7 +433,7 @@ export class Pawn {
   }
 
   private turnRight(currentY: MotionValue<number>, canCollide: boolean) {
-    console.log("turning right");
+    console.log(`turning right ${this.el.id}`);
     if (canCollide) {
       currentY.set(currentY.get() + Pawn.STEP);
     }
@@ -429,7 +441,7 @@ export class Pawn {
   }
 
   private turnDown(currentX: MotionValue<number>, canCollide: boolean) {
-    console.log("turning down");
+    console.log(`turning down ${this.el.id}`);
     if (canCollide) {
       currentX.set(currentX.get() - Pawn.STEP);
     }
@@ -437,15 +449,15 @@ export class Pawn {
   }
 
   private turnLeft(currentY: MotionValue<number>, canCollide: boolean) {
-    console.log("turning left");
+    console.log(`turning left ${this.el.id}`);
     if (canCollide) {
       currentY.set(currentY.get() - Pawn.STEP);
     }
     this.direction = "left";
   }
 
-  private takeRedOut(currentPostion: PawnPosition) {
-    const { x: currentX, y: currentY } = currentPostion;
+  private takeRedOut() {
+    const { x: currentX, y: currentY } = this.position;
 
     if (this.index === 0) {
       this.controls.start({
@@ -481,8 +493,8 @@ export class Pawn {
     }
   }
 
-  private takeGreenOut(currentPostion: PawnPosition) {
-    const { x: currentX, y: currentY } = currentPostion;
+  private takeGreenOut() {
+    const { x: currentX, y: currentY } = this.position;
     if (this.index === 0) {
       this.controls.start({
         name: "pawnout",
@@ -517,8 +529,8 @@ export class Pawn {
     }
   }
 
-  private takeBlueOut(currentPostion: PawnPosition) {
-    const { x: currentX, y: currentY } = currentPostion;
+  private takeBlueOut() {
+    const { x: currentX, y: currentY } = this.position;
     if (this.index === 0) {
       this.controls.start({
         name: "pawnout",
@@ -551,8 +563,8 @@ export class Pawn {
     }
   }
 
-  private takeYellowOut(currentPostion: PawnPosition) {
-    const { x: currentX, y: currentY } = currentPostion;
+  private takeYellowOut() {
+    const { x: currentX, y: currentY } = this.position;
 
     if (this.index === 0) {
       this.controls.start({

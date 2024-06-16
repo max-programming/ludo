@@ -12,7 +12,9 @@ export function Board() {
   return (
     <>
       <div className="relative flex items-center h-full">
-        <DiceView />
+        <div className="absolute">
+          <DiceView />
+        </div>
         <div className="relative" id="board">
           <div className="absolute z-50">
             {Array.from({ length: 4 }).map((_, i) => (

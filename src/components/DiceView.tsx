@@ -18,6 +18,7 @@ import Dice from "react-dice-roll";
 import { Switch } from "./ui/switch";
 import { Input } from "./ui/input";
 import { Player } from "@/utils/player";
+import { Variants, motion } from "framer-motion";
 
 const faces = [1, 2, 3, 4, 5, 6].map((face) => `/dice-faces/dice-${face}.png`);
 
@@ -124,19 +125,38 @@ export function DiceView() {
   }
 
   function setNextPlayer() {
-    const nextPlayer = colors[(colors.indexOf(playerTurn) + 1) % 4];
-    setPlayerTurn(nextPlayer);
+    setTimeout(() => {
+      const nextPlayer = colors[(colors.indexOf(playerTurn) + 1) % 4];
+      setPlayerTurn(nextPlayer);
+    }, 200);
   }
 
+  const positionVariants: Variants = {
+    red: {
+      translateX: -230,
+      translateY: -320,
+    },
+    green: {
+      translateX: 740,
+      translateY: -320,
+    },
+    yellow: {
+      translateX: 740,
+      translateY: 230,
+    },
+    blue: {
+      translateX: -230,
+      translateY: 230,
+    },
+  };
+
   return (
-    <div
-      className={cn(
-        "absolute w-full max-w-52",
-        playerTurn === "red" && "-left-56 top-16",
-        playerTurn === "green" && "-right-56 top-16",
-        playerTurn === "yellow" && "-right-56 bottom-28",
-        playerTurn === "blue" && "-left-56 bottom-28",
-      )}
+    <motion.div
+      className="w-full max-w-52"
+      variants={positionVariants}
+      initial={playerTurn}
+      animate={playerTurn}
+      transition={{ duration: 0.5, type: "spring" }}
     >
       <div className="w-full mb-2">
         {import.meta.env.MODE === "development" && (
@@ -173,7 +193,7 @@ export function DiceView() {
           cheatValue={cheatNumber}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
