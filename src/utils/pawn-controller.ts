@@ -143,6 +143,7 @@ export class Pawn {
   private async move(isLastMove: boolean): Promise<boolean> {
     if (!this.isOut) return false;
     const soundToPlay = isLastMove ? landSound : moveSound;
+    console.log(`Moving in ${this.direction}`);
 
     if (this.direction === "right") {
       await this.moveRight(soundToPlay);

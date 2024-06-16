@@ -8,7 +8,7 @@ function App() {
   return (
     <Provider store={ludoStore}>
       <DevTools store={ludoStore} />
-      <main className="grid h-screen place-items-center">
+      <main className="flex items-center justify-center h-screen">
         <Board />
       </main>
     </Provider>

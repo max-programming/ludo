@@ -83,6 +83,7 @@ export function DiceView() {
   }
 
   function changePlayerTurnOnEmptyTurn(value: number) {
+    console.log(pawns.every((c) => !c.isOut) && value !== 6);
     // if all pawns are in the initial home and the dice value is not 6, change the player turn
     if (pawns.every((c) => !c.isOut) && value !== 6) {
       setDisabledDice(false);
@@ -128,7 +129,15 @@ export function DiceView() {
   }
 
   return (
-    <div className="absolute w-full max-w-52 -bottom-4 -right-40">
+    <div
+      className={cn(
+        "absolute w-full max-w-52",
+        playerTurn === "red" && "-left-56 top-16",
+        playerTurn === "green" && "-right-56 top-16",
+        playerTurn === "yellow" && "-right-56 bottom-28",
+        playerTurn === "blue" && "-left-56 bottom-28",
+      )}
+    >
       <div className="w-full mb-2">
         {import.meta.env.MODE === "development" && (
           <div className="flex flex-col items-center gap-2 mb-2">
