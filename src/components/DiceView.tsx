@@ -133,7 +133,7 @@ export function DiceView() {
 
   const positionVariants: Variants = {
     red: {
-      translateX: -230,
+      translateX: isCheatMode ? -230 : -160,
       translateY: -320,
     },
     green: {
@@ -142,11 +142,11 @@ export function DiceView() {
     },
     yellow: {
       translateX: 740,
-      translateY: 230,
+      translateY: isCheatMode ? 230 : 260,
     },
     blue: {
-      translateX: -230,
-      translateY: 230,
+      translateX: isCheatMode ? -230 : -160,
+      translateY: isCheatMode ? 230 : 260,
     },
   };
 
