@@ -14,10 +14,10 @@ export const playerTurnAtom = atom<PlayerColor>(
   "red",
 );
 
-export const redPlayerAtom = atom<Player>(new Player("red"));
-export const greenPlayerAtom = atom<Player>(new Player("green"));
-export const yellowPlayerAtom = atom<Player>(new Player("yellow"));
-export const bluePlayerAtom = atom<Player>(new Player("blue"));
+export const redPlayerAtom = atom(new Player("red"));
+export const greenPlayerAtom = atom(new Player("green"));
+export const yellowPlayerAtom = atom(new Player("yellow"));
+export const bluePlayerAtom = atom(new Player("blue"));
 
 export const colorToAtomMap: Record<PlayerColor, typeof redPlayerAtom> = {
   red: redPlayerAtom,
