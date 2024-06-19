@@ -7,6 +7,7 @@ import {
   disabledDiceAtom,
   moveLogsAtom,
   colorToAtomMap,
+  ludoStore,
 } from "@/utils/atoms";
 import { Pawn } from "@/utils/pawn-controller";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
@@ -118,8 +119,6 @@ export function PawnButton({ playerColor, index }: PawnProps) {
         setMoveLogs((logs) => [...logs, `${playerColor} killed a pawn`]);
       }
 
-      console.log({ didKill });
-
       setDisabledDice(false);
       setDiceNumber(0);
       // if it was 6 or a kill, don't change the player
@@ -136,6 +135,7 @@ export function PawnButton({ playerColor, index }: PawnProps) {
     if (!pawn) return;
 
     if (def.name === "pawnout") {
+      pawn.setBoxId();
       if (playerColor === "blue" && [0, 1].includes(index)) {
         x.set(def.translateX);
         y.set(def.translateY);
@@ -150,8 +150,37 @@ export function PawnButton({ playerColor, index }: PawnProps) {
       }
       pawn.position = { x, y };
     }
-    // if (def.name !== "pawnin") {
-    // }
+    if (def.name === "pawnout") {
+      pawn.adjustMultipleInSameBox();
+      resetPawnScaleForAll();
+    }
+    if (def.name === "last_move") {
+      resetPawnScaleForAll();
+    }
+  }
+
+  function resetPawnScaleForAll() {
+    const pawnsOutside = Object.values(colorToAtomMap).flatMap((atom) =>
+      ludoStore.get(atom).pawns.filter((p) => p.isOut),
+    );
+    const countMap = new Map();
+    for (const pawn of pawnsOutside) {
+      if (!pawn.currentBoxId) continue;
+      const { currentBoxId } = pawn;
+      if (countMap.has(currentBoxId)) {
+        countMap.set(currentBoxId, countMap.get(currentBoxId) + 1);
+      }
+      else {
+        countMap.set(currentBoxId, 1);
+      }
+    }
+
+    const alonePawns = pawnsOutside.filter(
+      (p) => countMap.get(p.currentBoxId) === 1,
+    );
+    for (const pawn of alonePawns) {
+      pawn.resetPosition();
+    }
   }
 
   return (
@@ -165,10 +194,10 @@ export function PawnButton({ playerColor, index }: PawnProps) {
       onClick={handleTap}
       onAnimationComplete={handleAnimationComplete}
       ref={pawnRef}
-      whileTap={{
-        scale: 0.9,
-        transition: { duration: 0.1 },
-      }}
+      // whileTap={{
+      //   scale: 0.9,
+      //   transition: { duration: 0.1 },
+      // }}
       initial={{
         name: "stationary",
         translateY: y.get(),

@@ -69,11 +69,16 @@ export function PawnArea({ playerColor }: PawnAreaProps) {
             return (
               <div
                 key={columnIndex}
-                id={isDoor ? `door-${playerColor}` : undefined}
+                id={
+                  isDoor
+                    ? `door-${playerColor}`
+                    : `${isSafeBox ? "safebox" : "box"}-${playerColor}-${columnIndex}-${rowIndex}`
+                }
                 className={cn(
-                  "size-12 border border-gray-700 flex justify-center items-center box",
+                  "size-12 border border-gray-700 flex justify-center items-center",
                   (isMiddleRow || isFirstBox) && colors.bg[playerColor],
                   isMiddleRow && isWhiteBox && "bg-transparent",
+                  isMiddleRow && !isWhiteBox ? `box-${playerColor}` : "box",
                   isSafeBox && "safe",
                 )}
               >
@@ -133,10 +138,15 @@ export function PawnArea({ playerColor }: PawnAreaProps) {
             return (
               <div
                 key={columnIndex}
-                id={isDoor ? `door-${playerColor}` : undefined}
+                id={
+                  isDoor
+                    ? `door-${playerColor}`
+                    : `${isSafeBox ? "safebox" : "box"}-${playerColor}-${rowIndex}-${columnIndex}`
+                }
                 className={cn(
-                  "size-12 border border-gray-700 flex justify-center items-center box",
+                  "size-12 border border-gray-700 flex justify-center items-center",
                   (isMiddleColumn || isFirstBox) && colors.bg[playerColor],
+                  isMiddleColumn && !isWhiteBox ? `box-${playerColor}` : "box",
                   isMiddleColumn && isWhiteBox && "bg-transparent",
                   isSafeBox && "safe",
                 )}

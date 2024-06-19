@@ -84,7 +84,6 @@ export function DiceView() {
   }
 
   function changePlayerTurnOnEmptyTurn(value: number) {
-    console.log(pawns.every((c) => !c.isOut) && value !== 6);
     // if all pawns are in the initial home and the dice value is not 6, change the player turn
     if (pawns.every((c) => !c.isOut) && value !== 6) {
       setDisabledDice(false);
@@ -133,7 +132,7 @@ export function DiceView() {
 
   const positionVariants: Variants = {
     red: {
-      translateX: isCheatMode ? -230 : -160,
+      translateX: isCheatMode ? -210 : -160,
       translateY: -320,
     },
     green: {
@@ -145,7 +144,7 @@ export function DiceView() {
       translateY: isCheatMode ? 230 : 260,
     },
     blue: {
-      translateX: isCheatMode ? -230 : -160,
+      translateX: isCheatMode ? -210 : -160,
       translateY: isCheatMode ? 230 : 260,
     },
   };

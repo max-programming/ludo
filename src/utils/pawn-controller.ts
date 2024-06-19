@@ -4,6 +4,7 @@ import {
   bluePlayerAtom,
   greenPlayerAtom,
   ludoStore,
+  // playerTurnAtom,
   redPlayerAtom,
   yellowPlayerAtom,
 } from "./atoms";
@@ -33,7 +34,12 @@ interface PawnArgs {
 const moveSound = new Audio("/sfx/pawn_move.wav");
 const landSound = new Audio("/sfx/pawn_land.wav");
 const killSound = new Audio("/sfx/stomp.wav");
-
+export const dangerBoxIds = [
+  "box-red-5-0",
+  "box-green-5-2",
+  "box-yellow-0-2",
+  "box-blue-0-0",
+];
 export class Pawn {
   public static readonly STEP = 48;
   public static readonly ORIGINAL_SIZE = 40;
@@ -41,15 +47,16 @@ export class Pawn {
   public index: number;
   public position: PawnPosition;
   public color: PlayerColor;
+  public el: HTMLButtonElement;
+  public controls: AnimationControls;
   public stepsToHome: number | null = null;
+  public currentBoxId: string | null = null;
   public isOut = false;
   public hasWon = false;
   public size = 45;
   public progress = 0;
 
-  private controls: AnimationControls;
   private initialPosition: { x: number; y: number };
-  private el: HTMLButtonElement;
   private player: Player;
   private direction: PawnDirection;
 
@@ -83,8 +90,80 @@ export class Pawn {
     idx: number,
     color: PlayerColor,
   ): Pawn | undefined {
-    const pawns = Pawn.getPlayer(color).pawns;
+    const pawns = this.getPlayer(color).pawns;
     return pawns.find((pawn) => pawn.index === idx);
+  }
+  public static getByElement(el: HTMLButtonElement) {
+    const [, color, index] = el.id.split("-");
+    return this.getByIdxAndColor(Number(index), color as PlayerColor);
+  }
+  public checkProximity(selector: string, direction = this.direction): boolean {
+    const buffer = 20;
+    const pawnRect = getExactClientRect(this.el);
+    const wallRect = getExactClientRect(document.querySelector(selector)!);
+
+    let isClose = false;
+
+    switch (direction) {
+      case "up":
+        isClose =
+          pawnRect.top - buffer <= wallRect.bottom &&
+          pawnRect.bottom > wallRect.bottom;
+        break;
+      case "down":
+        isClose =
+          pawnRect.bottom + buffer >= wallRect.top &&
+          pawnRect.top < wallRect.top;
+        break;
+      case "left":
+        isClose =
+          pawnRect.left - buffer <= wallRect.right &&
+          pawnRect.right > wallRect.right;
+        break;
+      case "right":
+        isClose =
+          pawnRect.right + buffer >= wallRect.left &&
+          pawnRect.left < wallRect.left;
+        break;
+    }
+
+    return isClose;
+  }
+
+  public handleTurn() {
+    if (!this.currentBoxId) return;
+    if (this.direction === "right") {
+      if (this.checkIsNextBox("down")) {
+        this.turnDown();
+      }
+      else {
+        this.turnUp();
+      }
+    }
+    else if (this.direction === "up") {
+      if (this.checkIsNextBox("right")) {
+        this.turnRight();
+      }
+      else {
+        this.turnLeft();
+      }
+    }
+    else if (this.direction === "down") {
+      if (this.checkIsNextBox("left")) {
+        this.turnLeft();
+      }
+      else {
+        this.turnRight();
+      }
+    }
+    else if (this.direction === "left") {
+      if (this.checkIsNextBox("up")) {
+        this.turnUp();
+      }
+      else {
+        this.turnDown();
+      }
+    }
   }
 
   public async moveWithValue(value: number) {
@@ -123,6 +202,106 @@ export class Pawn {
     this.size = 40;
   }
 
+  public adjustMultipleInSameBox() {
+    const allPawns = Object.values(colorAtom).flatMap(
+      (atom) => ludoStore.get(atom).pawns,
+    );
+    const pawnsInBox = allPawns.filter(
+      (pawn) =>
+        !!pawn.currentBoxId &&
+        pawn.currentBoxId === this.currentBoxId &&
+        (pawn.color !== this.color || pawn.index !== this.index),
+    );
+    console.log(pawnsInBox);
+    if (!pawnsInBox.length) {
+      return;
+    }
+    const scale = 0.6;
+    const transition = { duration: 0.1 };
+    const { x, y } = this.position;
+    // if 2, keep them side by side
+    if (pawnsInBox.length === 1) {
+      this.controls.start({
+        scale,
+        translateX: x.get() - 10,
+        transition,
+      });
+      pawnsInBox[0].controls.start({
+        scale,
+        translateX: pawnsInBox[0].position.x.get() + 10,
+        transition,
+      });
+    }
+    // if 3, keep them in a triangle
+    else if (pawnsInBox.length === 2) {
+      this.controls.start({
+        scale,
+        translateY: y.get() + 10,
+        transition,
+      });
+      for (let i = 0; i < 2; i++) {
+        const currentPawn = pawnsInBox[i];
+        const { x, y } = currentPawn.position;
+        const translateX = i === 0 ? x.get() + 10 : x.get() - 10;
+        const translateY = y.get() - 10;
+        currentPawn.controls.start({
+          scale,
+          translateX,
+          translateY,
+          transition,
+        });
+      }
+    }
+    // if 4, keep them in a square
+    else if (pawnsInBox.length === 3) {
+      this.controls.start({
+        scale,
+        translateY: y.get() + 10,
+        translateX: x.get() - 10,
+        transition,
+      });
+      for (let i = 0; i < 3; i++) {
+        const currentPawn = pawnsInBox[i];
+        const { x, y } = currentPawn.position;
+        const translateX = i === 0 || i === 2 ? x.get() + 10 : x.get() - 10;
+        const translateY = i < 2 ? y.get() - 10 : y.get() + 10;
+        currentPawn.controls.start({
+          scale,
+          translateX,
+          translateY,
+          transition,
+        });
+      }
+    }
+  }
+
+  public setBoxId() {
+    const pawnRect = getExactClientRect(this.el);
+    const elementsAtNextPosition = document.elementsFromPoint(
+      pawnRect.left,
+      pawnRect.top,
+    );
+    const box = elementsAtNextPosition.find((el) =>
+      el.classList.contains("box"),
+    );
+    this.currentBoxId = box?.id || null;
+  }
+
+  public resetPosition() {
+    if (!this.currentBoxId) return;
+
+    const { x, y } = this.position;
+    const xPosition = x.get();
+    const yPositon = y.get();
+
+    this.controls.start({
+      scale: 1,
+      translateX: xPosition,
+      translateY: yPositon,
+      transition: { duration: 0.1 },
+    });
+  }
+
   private setDirection(): PawnDirection {
     switch (this.color) {
       case "red":
@@ -137,31 +316,55 @@ export class Pawn {
   }
 
   private async move(isLastMove: boolean): Promise<boolean> {
-    if (!this.isOut) return false;
+    if (!this.isOut || !this.currentBoxId) return false;
+    // if (this.color !== ludoStore.get(playerTurnAtom)) return false;
+    const isNextFinalHome = dangerBoxIds.includes(this.currentBoxId);
+    console.log({ isNextFinalHome });
     const soundToPlay = isLastMove ? landSound : moveSound;
     console.log(`Moving ${this.el.id} in ${this.direction}`);
-
+    // this.resetPosition();
     switch (this.direction) {
       case "right":
-        await this.moveRight(soundToPlay);
+        if (isNextFinalHome)
+          this.position.y.set(this.position.y.get() + Pawn.STEP);
+        await this.moveRight(soundToPlay, isLastMove);
         break;
       case "up":
-        await this.moveUp(soundToPlay);
+        if (isNextFinalHome)
+          this.position.x.set(this.position.x.get() + Pawn.STEP);
+        await this.moveUp(soundToPlay, isLastMove);
         break;
       case "down":
-        await this.moveDown(soundToPlay);
+        if (isNextFinalHome)
+          this.position.x.set(this.position.x.get() - Pawn.STEP);
+        await this.moveDown(soundToPlay, isLastMove);
         break;
       case "left":
-        await this.moveLeft(soundToPlay);
+        if (isNextFinalHome)
+          this.position.y.set(this.position.y.get() - Pawn.STEP);
+        await this.moveLeft(soundToPlay, isLastMove);
         break;
     }
 
+    this.setBoxId();
     // refactor code after this comment to make it more readable and DRY
     let didKill = false;
     if (isLastMove) {
+      // this.setBoxId();
       const collidingPawnId = this.checkPawnCollision();
       if (collidingPawnId) {
+        console.log(`${this.el.id} trying to kill ${collidingPawnId}`);
         didKill = await this.handleKill(collidingPawnId);
+
+        if (!didKill) {
+          console.log(`${this.el.id} did not kill ${collidingPawnId}`);
+          // the box is safe, hence if there are other pawns in the same box, they should be scaled down
+          this.adjustMultipleInSameBox();
+        }
+        else console.log(`${this.el.id} killed ${collidingPawnId}`);
+      }
+      else {
+        this.adjustMultipleInSameBox();
       }
     }
 
@@ -183,7 +386,7 @@ export class Pawn {
     const [, color, idx] = collidingPawnId.split("-");
     const pawnToKill = Pawn.getByIdxAndColor(Number(idx), color as PlayerColor);
     if (!pawnToKill) return false;
-    const isSafeBox = this.checkIsSafeBox(pawnToKill);
+    const isSafeBox = this.currentBoxId?.startsWith("safebox");
     if (isSafeBox) return false;
     await this.sendHome(pawnToKill);
     return true;
@@ -219,64 +422,6 @@ export class Pawn {
     return null;
   }
 
-  private handleTurn() {
-    const { x: currentX, y: currentY } = this.position;
-
-    const isNextFinalHome = this.checkProximity("#final_home");
-    if (this.direction === "right") {
-      if (!isNextFinalHome) {
-        if (this.checkIsNextBox("down")) {
-          this.turnDown(currentX, isNextFinalHome);
-        }
-        else {
-          this.turnUp(currentX, isNextFinalHome);
-        }
-      }
-      else {
-        this.turnUp(currentX, isNextFinalHome);
-      }
-    }
-    else if (this.direction === "up") {
-      if (!isNextFinalHome) {
-        if (this.checkIsNextBox("right")) {
-          this.turnRight(currentY, isNextFinalHome);
-        }
-        else {
-          this.turnLeft(currentY, isNextFinalHome);
-        }
-      }
-      else {
-        this.turnLeft(currentY, isNextFinalHome);
-      }
-    }
-    else if (this.direction === "down") {
-      if (!isNextFinalHome) {
-        if (this.checkIsNextBox("left")) {
-          this.turnLeft(currentY, isNextFinalHome);
-        }
-        else {
-          this.turnRight(currentY, isNextFinalHome);
-        }
-      }
-      else {
-        this.turnRight(currentY, isNextFinalHome);
-      }
-    }
-    else if (this.direction === "left") {
-      if (!isNextFinalHome) {
-        if (this.checkIsNextBox("up")) {
-          this.turnUp(currentX, isNextFinalHome);
-        }
-        else {
-          this.turnDown(currentX, isNextFinalHome);
-        }
-      }
-      else {
-        this.turnDown(currentX, isNextFinalHome);
-      }
-    }
-  }
-
   private handleDoor(): boolean {
     const colorToDoor: Record<PlayerColor, PawnDirection> = {
       red: "right",
@@ -289,14 +434,12 @@ export class Pawn {
 
       const isNextDoor = this.checkIsNextBox(direction, true);
       if (isNextDoor) {
-        if (this.color === "red" && direction === "right")
-          this.turnRight(this.position.y, false);
+        if (this.color === "red" && direction === "right") this.turnRight();
         else if (this.color === "green" && direction === "down")
-          this.turnDown(this.position.x, false);
-        else if (this.color === "blue" && direction === "up")
-          this.turnUp(this.position.x, false);
+          this.turnDown();
+        else if (this.color === "blue" && direction === "up") this.turnUp();
         else if (this.color === "yellow" && direction === "left")
-          this.turnLeft(this.position.y, false);
+          this.turnLeft();
         this.stepsToHome = 6;
       }
       return isNextDoor;
@@ -340,47 +483,11 @@ export class Pawn {
     return isNextBox;
   }
 
-  private checkProximity(
-    selector: string,
-    direction = this.direction,
-  ): boolean {
-    const buffer = 20;
-    const pawnRect = getExactClientRect(this.el);
-    const wallRect = getExactClientRect(document.querySelector(selector)!);
-
-    let isClose = false;
-
-    switch (direction) {
-      case "up":
-        isClose =
-          pawnRect.top - buffer <= wallRect.bottom &&
-          pawnRect.bottom > wallRect.bottom;
-        break;
-      case "down":
-        isClose =
-          pawnRect.bottom + buffer >= wallRect.top &&
-          pawnRect.top < wallRect.top;
-        break;
-      case "left":
-        isClose =
-          pawnRect.left - buffer <= wallRect.right &&
-          pawnRect.right > wallRect.right;
-        break;
-      case "right":
-        isClose =
-          pawnRect.right + buffer >= wallRect.left &&
-          pawnRect.left < wallRect.left;
-        break;
-    }
-
-    return isClose;
-  }
-
-  private async moveRight(soundToPlay: HTMLAudioElement) {
+  private async moveRight(soundToPlay: HTMLAudioElement, isLastMove = false) {
     const { x: currentX, y: currentY } = this.position;
     soundToPlay.play();
     await this.controls.start({
-      name: "move",
+      name: isLastMove ? "last_move" : "move",
       translateX: currentX.get() + Pawn.STEP,
       translateY: currentY.get(),
       transition: { duration: this.player.speed },
@@ -388,11 +495,11 @@ export class Pawn {
     currentX.set(currentX.get() + Pawn.STEP);
   }
 
-  private async moveUp(soundToPlay: HTMLAudioElement) {
+  private async moveUp(soundToPlay: HTMLAudioElement, isLastMove = false) {
     const { x: currentX, y: currentY } = this.position;
     soundToPlay.play();
     await this.controls.start({
-      name: "move",
+      name: isLastMove ? "last_move" : "move",
       translateY: currentY.get() - Pawn.STEP,
       translateX: currentX.get(),
       transition: { duration: this.player.speed },
@@ -400,11 +507,11 @@ export class Pawn {
     currentY.set(currentY.get() - Pawn.STEP);
   }
 
-  private async moveDown(soundToPlay: HTMLAudioElement) {
+  private async moveDown(soundToPlay: HTMLAudioElement, isLastMove = false) {
     const { x: currentX, y: currentY } = this.position;
     soundToPlay.play();
     await this.controls.start({
-      name: "move",
+      name: isLastMove ? "last_move" : "move",
       translateY: currentY.get() + Pawn.STEP,
       translateX: currentX.get(),
       transition: { duration: this.player.speed },
@@ -412,11 +519,11 @@ export class Pawn {
     currentY.set(currentY.get() + Pawn.STEP);
   }
 
-  private async moveLeft(soundToPlay: HTMLAudioElement) {
+  private async moveLeft(soundToPlay: HTMLAudioElement, isLastMove = false) {
     const { x: currentX, y: currentY } = this.position;
     soundToPlay.play();
     await this.controls.start({
-      name: "move",
+      name: isLastMove ? "last_move" : "move",
       translateX: currentX.get() - Pawn.STEP,
       translateY: currentY.get(),
       transition: { duration: this.player.speed },
@@ -424,35 +531,23 @@ export class Pawn {
     currentX.set(currentX.get() - Pawn.STEP);
   }
 
-  private turnUp(currentX: MotionValue<number>, canCollide: boolean) {
+  private turnUp() {
     console.log(`turning up ${this.el.id}`);
-    if (canCollide) {
-      currentX.set(currentX.get() + Pawn.STEP);
-    }
     this.direction = "up";
   }
 
-  private turnRight(currentY: MotionValue<number>, canCollide: boolean) {
+  private turnRight() {
     console.log(`turning right ${this.el.id}`);
-    if (canCollide) {
-      currentY.set(currentY.get() + Pawn.STEP);
-    }
     this.direction = "right";
   }
 
-  private turnDown(currentX: MotionValue<number>, canCollide: boolean) {
+  private turnDown() {
     console.log(`turning down ${this.el.id}`);
-    if (canCollide) {
-      currentX.set(currentX.get() - Pawn.STEP);
-    }
     this.direction = "down";
   }
 
-  private turnLeft(currentY: MotionValue<number>, canCollide: boolean) {
+  private turnLeft() {
     console.log(`turning left ${this.el.id}`);
-    if (canCollide) {
-      currentY.set(currentY.get() - Pawn.STEP);
-    }
     this.direction = "left";
   }
 
@@ -598,22 +693,8 @@ export class Pawn {
     }
   }
 
-  private checkIsSafeBox(pawnToCheck: Pawn): boolean {
-    // TODO: When 2 or more pawns are in the same safe box, they should be smaller in size and beside each other
-    const pawnRect = getExactClientRect(pawnToCheck.el);
-    const elementsAtNextPosition = document.elementsFromPoint(
-      pawnRect.left,
-      pawnRect.top,
-    );
-    const isSafeBox = elementsAtNextPosition.some(
-      (el) => el.classList.contains("box") && el.classList.contains("safe"),
-    );
-
-    return isSafeBox;
-  }
-
   private async sendHome(pawnToKill: Pawn) {
-    const isSafeBox = this.checkIsSafeBox(pawnToKill);
+    const isSafeBox = this.currentBoxId?.startsWith("safebox");
     if (isSafeBox) return;
 
     killSound.play();
@@ -622,12 +703,9 @@ export class Pawn {
     this.el.classList.replace("z-50", "z-40");
 
     await pawnToKill.reset();
-    const playerToKill = Pawn.getPlayer(pawnToKill.color);
-    const pawns = playerToKill.pawns.map((pawn) =>
-      pawn.index === pawnToKill.index ? pawnToKill : pawn,
-    );
+    const currentPlayer = Pawn.getPlayer(this.color);
 
-    Pawn.setPlayer(this.color, { ...playerToKill, pawns, hasKilled: true });
+    Pawn.setPlayer(this.color, { ...currentPlayer, hasKilled: true });
   }
 
   private async showStompAnimation() {
@@ -665,7 +743,7 @@ export class Pawn {
   }
 }
 
-function getExactClientRect(el: HTMLElement) {
+export function getExactClientRect(el: HTMLElement) {
   const rect = el.getBoundingClientRect();
   const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
