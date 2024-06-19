@@ -10,8 +10,7 @@ export const diceValueAtom = atom(0);
 export const disabledDiceAtom = atom(false);
 export const moveLogsAtom = atom<string[]>([]);
 export const playerTurnAtom = atom<PlayerColor>(
-  // colors[Math.floor(Math.random() * 4)],
-  "red",
+  colors[Math.floor(Math.random() * 4)],
 );
 
 export const redPlayerAtom = atom(new Player("red"));
