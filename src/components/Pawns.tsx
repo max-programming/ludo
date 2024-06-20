@@ -74,7 +74,7 @@ export function PawnButton({ playerColor, index }: PawnProps) {
     });
     setPlayer((p) => ({ ...p, pawns: [...p.pawns, newPawn] }));
 
-    // NEVER FORGET THE CLEANUP OR ELSE STRICT MODE WILL FU
+    // NEVER FORGET THE CLEANUP
     return () => {
       setPlayer((p) => ({
         ...p,

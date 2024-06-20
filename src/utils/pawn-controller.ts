@@ -131,7 +131,8 @@ export class Pawn {
   }
 
   public handleTurn() {
-    if (!this.currentBoxId) return;
+    if (!this.currentBoxId || !!this.stepsToHome) return;
+
     if (this.direction === "right") {
       if (this.checkIsNextBox("down")) {
         this.turnDown();
@@ -167,6 +168,7 @@ export class Pawn {
   }
 
   public async moveWithValue(value: number) {
+    this.player = Pawn.getPlayer(this.color);
     if (this.hasWon) return;
 
     let didKill = false;
@@ -176,7 +178,6 @@ export class Pawn {
       if (this.stepsToHome && remainingSteps > this.stepsToHome) return;
       didKill = await this.move(i === value - 1);
       remainingSteps--;
-      this.progress++;
     }
     return didKill;
   }
@@ -281,8 +282,10 @@ export class Pawn {
       pawnRect.left,
       pawnRect.top,
     );
-    const box = elementsAtNextPosition.find((el) =>
-      el.classList.contains("box"),
+    const box = elementsAtNextPosition.find(
+      (el) =>
+        el.classList.contains("box") ||
+        el.classList.contains(`box-${this.color}`),
     );
     this.currentBoxId = box?.id || null;
   }
@@ -345,6 +348,7 @@ export class Pawn {
         await this.moveLeft(soundToPlay, isLastMove);
         break;
     }
+    this.progress++;
 
     this.setBoxId();
     // refactor code after this comment to make it more readable and DRY
@@ -375,10 +379,15 @@ export class Pawn {
       if (this.stepsToHome) this.stepsToHome--;
     }
 
+    // reset the progress if the pawn does not enter the home area (i.e., has not killed another pawn)
+    if (this.progress === 50 && !hasKilled) {
+      this.progress = -2;
+    }
     const isNextBox = this.checkIsNextBox();
     if (isNextBox) return didKill;
 
     this.handleTurn();
+    this.hasWon = this.progress === 56;
     return didKill;
   }
 
@@ -423,6 +432,8 @@ export class Pawn {
   }
 
   private handleDoor(): boolean {
+    if (this.progress !== 50 || !this.player.hasKilled) return false;
+
     const colorToDoor: Record<PlayerColor, PawnDirection> = {
       red: "right",
       green: "down",
@@ -432,17 +443,13 @@ export class Pawn {
     for (const [color, direction] of Object.entries(colorToDoor)) {
       if (color !== this.color) continue;
 
-      const isNextDoor = this.checkIsNextBox(direction, true);
-      if (isNextDoor) {
-        if (this.color === "red" && direction === "right") this.turnRight();
-        else if (this.color === "green" && direction === "down")
-          this.turnDown();
-        else if (this.color === "blue" && direction === "up") this.turnUp();
-        else if (this.color === "yellow" && direction === "left")
-          this.turnLeft();
-        this.stepsToHome = 6;
-      }
-      return isNextDoor;
+      if (this.color === "red" && direction === "right") this.turnRight();
+      else if (this.color === "green" && direction === "down") this.turnDown();
+      else if (this.color === "blue" && direction === "up") this.turnUp();
+      else if (this.color === "yellow" && direction === "left") this.turnLeft();
+      this.stepsToHome = 6;
+
+      return true;
     }
     return false;
   }
