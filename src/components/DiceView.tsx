@@ -191,7 +191,7 @@ export function DiceView() {
           size={100}
           disabled={disabledDice}
           onRoll={handleRoll}
-          cheatValue={cheatNumber}
+          cheatValue={isCheatMode ? cheatNumber : undefined}
         />
       </div>
     </motion.div>
