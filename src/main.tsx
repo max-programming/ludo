@@ -1,8 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.tsx";
 import { PostHogProvider } from "posthog-js/react";
+import { PageRoutes } from "./components/PageRoutes.tsx";
+import { Provider } from "jotai";
+import { DevTools } from "jotai-devtools";
+import { ludoStore } from "./utils/atoms.ts";
+
 import "./index.css";
+import "jotai-devtools/styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -13,7 +18,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         person_profiles: "always",
       }}
     >
-      <App />
+      <Provider store={ludoStore}>
+        <DevTools store={ludoStore} />
+        <PageRoutes />
+      </Provider>
     </PostHogProvider>
   </React.StrictMode>,
 );

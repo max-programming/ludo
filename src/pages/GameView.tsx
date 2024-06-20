@@ -1,11 +1,9 @@
-import { Board } from "./components/Board";
+import { Board } from "@/components/Board";
 
-function App() {
+export function GameView() {
   return (
     <main className="flex items-center justify-center h-screen">
       <Board />
     </main>
   );
 }
-
-export default App;

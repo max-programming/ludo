@@ -3,7 +3,7 @@ import { PlayerColor } from "@/types";
 import {
   bluePlayerAtom,
   colorToAtomMap,
-  colors,
+  colorsAtom,
   diceValueAtom,
   disabledDiceAtom,
   greenPlayerAtom,
@@ -59,6 +59,7 @@ export function DiceView() {
   const player = useAtomValue(colorToAtomMap[playerTurn]);
   const [, setMoveLogs] = useAtom(moveLogsAtom);
   const { pawns } = useAtomValue(colorAtom[playerTurn]);
+  const colors = useAtomValue(colorsAtom);
 
   function handleRoll(value: number) {
     setDiceValue(value);
@@ -125,7 +126,8 @@ export function DiceView() {
 
   function setNextPlayer() {
     setTimeout(() => {
-      const nextPlayer = colors[(colors.indexOf(playerTurn) + 1) % 4];
+      const nextPlayer =
+        colors[(colors.indexOf(playerTurn) + 1) % colors.length];
       setPlayerTurn(nextPlayer);
     }, 200);
   }
@@ -189,7 +191,7 @@ export function DiceView() {
           size={100}
           disabled={disabledDice}
           onRoll={handleRoll}
-          cheatValue={cheatNumber}
+          cheatValue={isCheatMode ? cheatNumber : undefined}
         />
       </div>
     </motion.div>

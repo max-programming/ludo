@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { type PlayerColor } from "@/types";
 import { PawnPlace } from "./PawnPlace";
 import { useAtomValue } from "jotai";
-import { playerTurnAtom } from "@/utils/atoms";
+import { colorsAtom, playerTurnAtom } from "@/utils/atoms";
 
 interface InitialHomeProps {
   playerColor: PlayerColor;
@@ -10,6 +10,8 @@ interface InitialHomeProps {
 
 export function InitialHome({ playerColor }: InitialHomeProps) {
   const playerTurn = useAtomValue(playerTurnAtom);
+  const playerColors = useAtomValue(colorsAtom);
+
   const colors = {
     bg: {
       red: "bg-red-500",
@@ -28,6 +30,7 @@ export function InitialHome({ playerColor }: InitialHomeProps) {
   return (
     <div
       className={cn(
+        !playerColors.includes(playerColor) && "opacity-50",
         "relative size-72 border-none initial_home",
         colors.bg[playerColor],
         playerTurn === playerColor &&
