@@ -3,15 +3,15 @@ import { type PlayerColor } from "@/types";
 import {
   diceValueAtom,
   playerTurnAtom,
-  colors as playerColors,
   disabledDiceAtom,
   moveLogsAtom,
   colorToAtomMap,
   ludoStore,
+  colorsAtom,
 } from "@/utils/atoms";
 import { Pawn } from "@/utils/pawn-controller";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 
 interface PawnProps {
@@ -47,8 +47,9 @@ export function PawnButton({ playerColor, index }: PawnProps) {
   const [player, setPlayer] = useAtom(colorToAtomMap[playerColor]);
   const [diceNumber, setDiceNumber] = useAtom(diceValueAtom);
   const [, setMoveLogs] = useAtom(moveLogsAtom);
-  const pawnRef = useRef<HTMLButtonElement>(null);
   const setDisabledDice = useSetAtom(disabledDiceAtom);
+  const playerColors = useAtomValue(colorsAtom);
+  const pawnRef = useRef<HTMLButtonElement>(null);
 
   const controls = useAnimation();
   const x = useMotionValue(index % 2 === 0 ? Pawn.STEP : Pawn.STEP * 4);
@@ -86,7 +87,9 @@ export function PawnButton({ playerColor, index }: PawnProps) {
   function setNextPlayer() {
     setTimeout(() => {
       const nextPlayer =
-        playerColors[(playerColors.indexOf(playerTurn) + 1) % 4];
+        playerColors[
+          (playerColors.indexOf(playerTurn) + 1) % playerColors.length
+        ];
       setPlayerTurn(nextPlayer);
     }, 200);
   }
@@ -186,6 +189,7 @@ export function PawnButton({ playerColor, index }: PawnProps) {
   return (
     <motion.button
       className={cn(
+        !playerColors.includes(playerColor) && "hidden",
         "absolute focus:outline-none pawn",
         playerColor === playerTurn ? "z-50" : "z-40",
       )}
