@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { type PlayerColor } from "@/types";
+import { colorToAtomMap } from "@/utils/atoms";
+import { useAtomValue } from "jotai";
 import { Star } from "lucide-react";
 
 interface PawnAreaProps {
@@ -10,13 +12,14 @@ interface PawnAreaProps {
 
 // these are the boxes where pawns move
 export function PawnArea({ playerColor }: PawnAreaProps) {
+  const player = useAtomValue(colorToAtomMap[playerColor]);
   const isHorizontal = playerColor === "red" || playerColor === "yellow";
   const colors = {
     bg: {
-      red: "bg-red-500",
-      blue: "bg-blue-500",
-      green: "bg-green-500",
-      yellow: "bg-yellow-500",
+      red: player.hasKilled ? "bg-red-300" : "bg-red-500",
+      blue: player.hasKilled ? "bg-blue-300" : "bg-blue-500",
+      green: player.hasKilled ? "bg-green-300" : "bg-green-500",
+      yellow: player.hasKilled ? "bg-yellow-300" : "bg-yellow-500",
     },
     stroke: {
       red: "stroke-red-800",
